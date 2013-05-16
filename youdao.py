@@ -1,6 +1,6 @@
 # coding: UTF-8
 
-from bs4 import BeautifulSoup
+from lxml import etree
 import urllib2
 import sys
 
@@ -12,6 +12,7 @@ def obtain_keyword():
     except:
         print 'ERROR: yd(youdao) takes one parameter.'
         sys.exit()
+    return None
 
 
 # Obtain option from shell command
@@ -24,53 +25,41 @@ def obtain_option():
         return option
     except:
         pass
+    return None
 
 
 # Crawl youdao dic page and return a bs4.BeautifulSoup object
 def crawl_page(keyword):
     url = 'http://dict.youdao.com/search?le=eng&q=%s&keyfrom=dict.index' % keyword
+    parser = etree.HTMLParser()
     # use try to check network connection
     try:
-        page = urllib2.urlopen(url).read()
+        tree = etree.parse(url, parser)
     except:
         print 'ERROR: network connection failed.'
         sys.exit()
-    soup = BeautifulSoup(page)
-    return soup
+    root = tree.getroot()
+    return root
 
 
 # Find the basic definition
-def basic_definition(soup):
-    s1 = soup.find(id='phrsListTab')
-    basic_def = []
-    lst = []
-    try:
-        lst = s1.find_all('li')
-    except:
-        pass
-    for l in lst:
-        if l.string:
-            basic_def.append(l.string)
+def basic_definition(root):
+    ul = root.xpath('//*[@id="phrsListTab"]/div/ul')[0]
+    basic_def = [li.text for li in ul]
     return basic_def
 
 
 # find definition of the 21st century big english-chinese dictionary
-def century_21_definition(soup):
-    s2 = soup.find(id='authDictTrans')
+def century_21_definition(root):
+    lis = root.xpath('//*[@id="authDictTrans"]/ul/li[@class="wordGroup"]')
     century_21 = []
-    part_of_speech = s2.ul.children
-    for p in part_of_speech:
-        try:
-            if p.ul:
-                li = p.ul.find_all('li')
-                for l in li:
-                    if l:
-                        definition = l.span.string
-                        example = l.find_all('p')
-                        sentences = [e.string for e in example]
-                        century_21.append([definition, sentences])
-        except AttributeError:
-            pass
+    for l in lis:
+        part_of_speech_list = l.xpath('./span')
+        if part_of_speech_list:
+            part_of_speech = part_of_speech_list[0].text
+        defs = l.xpath('./ul/li[@class="wordGroup"]/span')
+        defs = [d.text for d in defs]
+        century_21.append((part_of_speech, defs))
     return century_21
 
 
@@ -84,28 +73,27 @@ def print_basic_definition(basic_def):
 
 # print definition of the 21st century big english-chinese dictionary
 def print_century_21_definition(century_21):
-    i = 0
     for c in century_21:
-        i += 1
-        print i,
+        i = 0
         print c[0]
         for q in c[1]:
-            print '    ',  # four blank space
+            i += 1
+            print i,
             print q
     print '*****************************************************************'
 
 
 def main():
     keyword = obtain_keyword()
-    soup = crawl_page(keyword)
-    basic_def = basic_definition(soup)
+    root = crawl_page(keyword)
+    basic_def = basic_definition(root)
     if not basic_def:
         print "No such word, please try again!"
         return
     print_basic_definition(basic_def)
     specific = obtain_option()
     if specific:
-        century_21 = century_21_definition(soup)
+        century_21 = century_21_definition(root)
         print_century_21_definition(century_21)
 
 
