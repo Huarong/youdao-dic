@@ -44,8 +44,11 @@ def crawl_page(keyword):
 
 # Find the basic definition
 def basic_definition(root):
-    ul = root.xpath('//*[@id="phrsListTab"]/div/ul')[0]
-    basic_def = [li.text for li in ul]
+    try:
+        ul = root.xpath('//*[@id="phrsListTab"]/div/ul')[0]
+        basic_def = [li.text for li in ul]
+    except IndexError:
+        basic_def = None
     return basic_def
 
 
@@ -69,6 +72,7 @@ def print_basic_definition(basic_def):
     for b in basic_def:
         print b
     print '*****************************************************************'
+    return None
 
 
 # print definition of the 21st century big english-chinese dictionary
@@ -81,6 +85,7 @@ def print_century_21_definition(century_21):
             print i,
             print q
     print '*****************************************************************'
+    return None
 
 
 def main():
@@ -89,12 +94,13 @@ def main():
     basic_def = basic_definition(root)
     if not basic_def:
         print "No such word, please try again!"
-        return
+        return None
     print_basic_definition(basic_def)
     specific = obtain_option()
     if specific:
         century_21 = century_21_definition(root)
         print_century_21_definition(century_21)
+    return None
 
 
 if __name__ == '__main__':
